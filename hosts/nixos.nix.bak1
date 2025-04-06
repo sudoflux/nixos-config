@@ -1,0 +1,155 @@
+{ config, pkgs, inputs, ... }: {
+
+  nixpkgs.hostPlatform = "x86_64-linux";
+  nixpkgs.config.allowUnfree = true;
+
+  imports = [
+    inputs.home-manager.nixosModules.home-manager
+  ];
+ 
+  # Home Manager user config
+  home-manager.useGlobalPkgs = true;
+  home-manager.useUserPackages = true;
+  home-manager.users.josh = import ../home/josh.nix;
+
+  # Bootloader with nvidia default
+  boot.loader.systemd-boot = {
+    enable = true;
+    editor = false;
+    configurationLimit = 5;
+  };
+
+  boot.loader.efi.canTouchEfiVariables = true;
+  boot.loader.timeout = 0;
+
+  # Filesystems
+  fileSystems."/" = {
+    device = "/dev/disk/by-label/nixos-root";
+    fsType = "ext4";
+  };
+
+  fileSystems."/boot" = {
+    device = "/dev/disk/by-label/ESP";
+    fsType = "vfat";
+  };
+
+  swapDevices = [
+    { device = "/dev/disk/by-label/SWAP"; }
+  ];
+
+  # Hostname & Locale
+  networking.hostName = "nixos";
+  time.timeZone = "America/New_York";
+  i18n.defaultLocale = "en_US.UTF-8";
+
+  # User setup
+  users.users.josh = {
+    isNormalUser = true;
+    extraGroups = [ "wheel" "networkmanager" ];
+    shell = pkgs.zsh;
+  };
+
+  programs.zsh.enable = true;
+
+  # Keep AMD as default (battery mode)
+  services.xserver.videoDrivers = [ "amdgpu" ];
+  boot.initrd.kernelModules = [ "amdgpu" ];
+  hardware.enableRedistributableFirmware = true;
+
+  # Shared OpenGL
+  hardware.opengl.enable = true; 
+
+  # Display Manager + Hyprland
+  services.xserver.enable = true;
+  services.xserver.displayManager.sddm = {
+    enable = true;
+    theme = "breeze";
+  };
+  services.xserver.windowManager.hypr.enable = true;
+
+  programs.hyprland = {
+    enable = true;
+    package = inputs.hyprland.packages.${pkgs.system}.hyprland;
+    portalPackage = inputs.hyprland.packages.${pkgs.system}.xdg-desktop-portal-hyprland;
+  };
+
+# Nvidia spec (dock mode)
+specialisation = {
+  nvidia.configuration = {
+    system.nixos.label = "nixos-nvidia"; 
+
+    boot.kernelParams = [ "nvidia-drm.modeset=1" ];
+
+    services.xserver.videoDrivers = [ "nvidia" ];
+
+    services.logind = {
+      lidSwitch = "ignore";
+      lidSwitchDocked = "ignore";
+      lidSwitchExternalPower = "ignore";
+    };
+
+    hardware.opengl = {
+      enable = true;
+      driSupport = true;
+      driSupport32Bit = true;
+    };
+
+    hardware.nvidia = {
+      modesetting.enable = true;
+      powerManagement.enable = true;
+      nvidiaSettings = true;
+      package = config.boot.kernelPackages.nvidiaPackages.stable;
+
+      prime = {
+        sync.enable = true;
+        nvidiaBusId = "PCI:1:0:0";
+        amdgpuBusId = "PCI:6:0:0";
+      };
+
+      # Optional: Try this later if flicker persists
+      # open = true;
+    };
+  };
+};
+
+  environment.systemPackages = with pkgs; [
+    # System Tools
+    xdg-desktop-portal
+    xdg-desktop-portal-hyprland
+    wayland
+    dbus
+    pciutils
+    usbutils
+    config.boot.kernelPackages.nvidiaPackages.stable.bin
+    gnome.adwaita-icon-theme
+  ];
+
+  environment.variables = {
+    XCURSOR_THEME = "Adwaita";
+    XCURSOR_SIZE = "24";
+  };
+
+  # Audio
+  sound.enable = true;
+  hardware.pulseaudio.enable = false;
+  services.pipewire = {
+    enable = true;
+    pulse.enable = true;
+    alsa.enable = true;
+    jack.enable = true;
+  };
+
+  # Networking
+  networking.networkmanager.enable = true;
+
+  # Nix config
+  nix.settings = {
+    substituters = [ "https://hyprland.cachix.org" ];
+    trusted-public-keys = [
+      "hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="
+    ];
+    experimental-features = [ "nix-command" "flakes" ];
+  };
+
+  system.stateVersion = "23.11";
+}
