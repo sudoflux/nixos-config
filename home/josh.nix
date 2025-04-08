@@ -11,21 +11,18 @@
   wayland.windowManager.hyprland = {
     enable = true;
     settings = {
-#      monitor = [
-#        "DP-1,3840x2160@60,1920x0,1.5"
-#        "HDMI-A-1,1920x1080@75,0x540,1,transform,1"
-#      ];
       env = [
-#        "WLR_DRM_DEVICES,/dev/dri/card0"
+#        "WLR_DRM_DEVICES,/dev/dri/card1"   
         "__GLX_VENDOR_LIBRARY_NAME,nvidia"
         "LIBVA_DRIVER_NAME,nvidia"
         "WLR_RENDERER_ALLOW_SOFTWARE,0"
         "WLR_NO_HARDWARE_CURSORS,1"
       ];
-      exec-once = [  
-       "~/.config/hypr/monitors.sh" 
-       "waybar"
-       "kitty"
+      monitor = [ ",preferred,auto,1" ];  # safe fallback
+      exec-once = [
+        "~/.config/hypr/monitors.sh"
+        "waybar"
+        "kitty"
       ];
       bind = [
         "SUPER,Return,exec,kitty"
@@ -95,15 +92,11 @@
   # 📦 Extra packages
   # ---------------------
   home.packages = with pkgs; [
-    firefox
     hyprland
     foot
-    kitty
-    waybar
     wofi
     swww
     git
-    vim
     curl
     wget
     htop
