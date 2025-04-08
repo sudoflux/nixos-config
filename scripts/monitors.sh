@@ -1,0 +1,1 @@
+/etc/static/nixos/scripts/monitors.sh
